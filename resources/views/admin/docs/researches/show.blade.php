@@ -49,8 +49,8 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                        <a href="{{ route('admin.docs.researches.index') }}" class="btn btn-light border">
-                            <i class="fe fe-arrow-right me-1"></i>كل الأبحاث
+                        <a href="{{ route('admin.docs.researches.index', ['documentation_category_id' => $research->documentation_category_id]) }}" class="btn btn-light border">
+                            <i class="fe fe-arrow-right me-1"></i>أبحاث القسم
                         </a>
                         <a href="{{ route('admin.docs.researches.edit', $research) }}" class="btn btn-outline-secondary">
                             <i class="fe fe-edit-2 me-1"></i>تعديل البحث
@@ -105,7 +105,7 @@
         <div class="card custom-card doc-cat-filter-card doc-cat-animate mb-4">
             <div class="card-body pt-3">
                 <form method="GET" action="{{ route('admin.docs.researches.show', $research) }}" class="row g-3 align-items-end">
-                    <div class="col-lg-5 col-md-6">
+                    <div class="col-lg-4 col-md-6">
                         <label class="form-label" for="rs-search">بحث داخل التوثيقات</label>
                         <div class="input-group">
                             <span class="input-group-text bg-transparent"><i class="fe fe-search"></i></span>
@@ -113,12 +113,20 @@
                                    placeholder="عنوان أو slug..." value="{{ request('search') }}" autocomplete="off">
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-6">
+                    <div class="col-lg-2 col-md-6">
                         <label class="form-label" for="rs-status">الحالة</label>
                         <select name="status" id="rs-status" class="form-select">
                             <option value="">كل الحالات</option>
                             <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>مسودة</option>
                             <option value="published" {{ request('status') === 'published' ? 'selected' : '' }}>منشور</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label" for="rs-sort">الترتيب</label>
+                        <select name="sort" id="rs-sort" class="form-select" onchange="this.form.submit()">
+                            <option value="">الأقدم أولاً</option>
+                            <option value="desc" {{ $sort === 'desc' ? 'selected' : '' }}>الأحدث أولاً</option>
+                            <option value="manual" {{ $sort === 'manual' ? 'selected' : '' }}>الترتيب اليدوي (سحب)</option>
                         </select>
                     </div>
                     <div class="col-lg-4 col-md-6">
@@ -136,11 +144,14 @@
                 <h6 class="card-title mb-0">توثيقات البحث</h6>
                 <div class="d-flex align-items-center gap-3">
                     <span class="doc-research-save-state text-muted" id="rs-save-state"></span>
-                    <span class="doc-cat-results-meta">{{ $pages->count() }} صفحة</span>
+                    <span class="doc-cat-results-meta">
+                        {{ $sort === 'manual' ? $pages->count() : $pages->total() }} صفحة
+                        @if($isFiltered)<span class="text-primary">(مفلتر)</span>@endif
+                    </span>
                 </div>
             </div>
             <div class="card-body">
-                @if($isFiltered)
+                @if($isFiltered && $sort === 'manual')
                     <div class="alert alert-warning border-0 py-2 px-3 mb-3">
                         <i class="fe fe-info me-1"></i>
                         إعادة الترتيب معطّلة أثناء التصفية — القائمة المعروضة جزئية، وحفظ ترتيبها سيُفسد ترتيب البقية.
@@ -165,18 +176,27 @@
                         </a>
                     </div>
                 @else
+                    @php
+                        $numberOffset = $sort === 'manual' ? 0 : max(($pages->firstItem() ?? 1) - 1, 0);
+                    @endphp
                     <p class="text-muted small mb-3">
                         <i class="fe fe-move me-1"></i>
-                        اسحب من المقبض لإعادة الترتيب — يُحفظ تلقائياً. هذا الترتيب خاص بصفحة البحث ولا يغيّر ترتيب الموقع العام.
+                        @if($sort === 'manual')
+                            اسحب من المقبض لإعادة الترتيب — يُحفظ تلقائياً. هذا الترتيب خاص بصفحة البحث ولا يغيّر ترتيب الموقع العام.
+                        @else
+                            لإعادة الترتيب بالسحب اختر «الترتيب اليدوي» من قائمة الترتيب.
+                        @endif
                     </p>
                     <div id="rs-list"
-                         class="doc-research-list {{ $isFiltered ? 'doc-research-list--locked' : '' }}"
-                         data-locked="{{ $isFiltered ? '1' : '0' }}"
+                         class="doc-research-list {{ $canReorder ? '' : 'doc-research-list--locked' }}"
+                         data-locked="{{ $canReorder ? '0' : '1' }}"
                          data-reorder-url="{{ route('admin.docs.researches.reorder', $research) }}">
                         @foreach($pages as $page)
                             <div class="doc-research-item" data-page-id="{{ $page->id }}">
-                                <span class="doc-research-handle" title="اسحب لإعادة الترتيب"><i class="fe fe-menu"></i></span>
-                                <span class="doc-research-order">{{ $loop->iteration }}</span>
+                                @if($sort === 'manual')
+                                    <span class="doc-research-handle" title="اسحب لإعادة الترتيب"><i class="fe fe-menu"></i></span>
+                                @endif
+                                <span class="doc-research-order">{{ $numberOffset + $loop->iteration }}</span>
                                 <div class="doc-research-item__main">
                                     <a href="{{ route('admin.docs.pages.edit', $page) }}" class="doc-research-item__title">{{ $page->title }}</a>
                                     <div class="doc-research-item__meta">
@@ -190,18 +210,43 @@
                                         <small class="text-muted">{{ $page->updated_at?->diffForHumans() }}</small>
                                     </div>
                                 </div>
-                                <div class="doc-cat-actions">
+                                <div class="doc-cat-actions flex-nowrap">
+                                    @if($page->isPublished() && $page->category?->is_active)
+                                        <a href="{{ route('frontend.docs.show', ['categorySlug' => $page->category->slug, 'pagePath' => $page->slugPathUnderCategory()]) }}"
+                                           class="btn btn-sm doc-cat-action-btn" target="_blank" rel="noopener" title="فتح على الموقع">
+                                            <i class="fe fe-external-link"></i>
+                                        </a>
+                                    @else
+                                        <span class="btn btn-sm doc-cat-action-btn disabled" title="غير منشورة — لا يمكن فتحها على الموقع">
+                                            <i class="fe fe-external-link"></i>
+                                        </span>
+                                    @endif
                                     <a href="{{ route('admin.docs.pages.edit', $page) }}" class="btn btn-sm doc-cat-action-btn doc-cat-action-btn--primary" title="تعديل">
                                         <i class="fe fe-edit-2"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm doc-cat-action-btn doc-cat-action-btn--danger rs-detach"
-                                            data-page-id="{{ $page->id }}" data-page-title="{{ $page->title }}" title="إزالة من البحث">
+                                    <button type="button" class="btn btn-sm doc-cat-action-btn rs-detach"
+                                            data-page-id="{{ $page->id }}" data-page-title="{{ $page->title }}" title="إزالة من البحث (دون حذف)">
                                         <i class="fe fe-x-circle"></i>
                                     </button>
+                                    <form action="{{ route('admin.docs.pages.destroy', $page) }}" method="POST" class="d-inline"
+                                          onsubmit="return confirm(@js('حذف «' . $page->title . '» نهائياً؟'));">
+                                        @csrf
+                                        @method('DELETE')
+                                        <input type="hidden" name="redirect" value="back">
+                                        <button type="submit" class="btn btn-sm doc-cat-action-btn doc-cat-action-btn--danger" title="حذف">
+                                            <i class="fe fe-trash-2"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         @endforeach
                     </div>
+
+                    @if($sort !== 'manual' && $pages->hasPages())
+                        <div class="d-flex justify-content-center mt-3">
+                            {{ $pages->links() }}
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>

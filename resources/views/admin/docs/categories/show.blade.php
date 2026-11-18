@@ -91,7 +91,7 @@
             </div>
             <div class="card-body pt-3">
                 <form method="GET" action="{{ route('admin.docs.categories.show', $category) }}" class="row g-3 align-items-end">
-                    <div class="col-lg-5 col-md-6">
+                    <div class="col-lg-4 col-md-6">
                         <label class="form-label" for="doc-page-search">بحث</label>
                         <div class="input-group">
                             <span class="input-group-text bg-transparent"><i class="fe fe-search"></i></span>
@@ -103,12 +103,19 @@
                                    value="{{ request('search') }}">
                         </div>
                     </div>
-                    <div class="col-lg-3 col-md-6">
+                    <div class="col-lg-2 col-md-6">
                         <label class="form-label" for="doc-page-status">الحالة</label>
                         <select name="status" id="doc-page-status" class="form-select">
                             <option value="">كل الحالات</option>
                             <option value="published" {{ request('status') === 'published' ? 'selected' : '' }}>منشور</option>
                             <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>مسودة</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label" for="doc-page-sort">الترتيب</label>
+                        <select name="sort" id="doc-page-sort" class="form-select" onchange="this.form.submit()">
+                            <option value="">الأقدم أولاً</option>
+                            <option value="desc" {{ request('sort') === 'desc' ? 'selected' : '' }}>الأحدث أولاً</option>
                         </select>
                     </div>
                     <div class="col-lg-4 col-md-12">
@@ -140,6 +147,7 @@
                     <table class="table doc-cat-table mb-0">
                         <thead>
                             <tr>
+                                <th width="60">#</th>
                                 <th>العنوان</th>
                                 <th>slug</th>
                                 <th>الحالة</th>
@@ -149,9 +157,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @if (empty($pageTree))
+                            @if ($pageTree->isEmpty())
                                 <tr>
-                                    <td colspan="6" class="text-center py-5">
+                                    <td colspan="7" class="text-center py-5">
                                         <div class="doc-cat-empty">
                                             <div class="doc-cat-empty__icon"><i class="fe fe-file-text"></i></div>
                                             <h6 class="mb-1">لا توجد مقالات في هذا القسم</h6>
@@ -164,14 +172,21 @@
                                 </tr>
                             @else
                                 @include('admin.docs.categories.partials.page-tree-rows', [
-                                    'nodes' => $pageTree,
+                                    'nodes' => $pageTree->items(),
                                     'category' => $category,
                                     'depth' => 0,
+                                    'numberOffset' => $pageTree->firstItem() - 1,
+                                    'numberPrefix' => '',
                                 ])
                             @endif
                         </tbody>
                     </table>
                 </div>
+                @if ($pageTree->hasPages())
+                    <div class="d-flex justify-content-center p-3 border-top">
+                        {{ $pageTree->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>

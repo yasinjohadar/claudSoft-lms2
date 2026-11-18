@@ -48,9 +48,13 @@ class DocumentationPageController extends Controller
 
     private function paginatedDocumentationPages(Request $request): LengthAwarePaginator
     {
+        // Oldest first by default; ?sort=desc flips to newest first.
+        $direction = $request->input('sort') === 'desc' ? 'desc' : 'asc';
+
         return $this->documentationPagesQuery($request)
             ->with(['category', 'parent', 'research'])
-            ->orderByDesc('updated_at')
+            ->orderBy('created_at', $direction)
+            ->orderBy('id', $direction)
             ->paginate(25)
             ->withQueryString();
     }
@@ -246,13 +250,18 @@ class DocumentationPageController extends Controller
             ->with('success', 'تم حفظ التعديلات');
     }
 
-    public function destroy(DocumentationPage $documentation_page)
+    public function destroy(Request $request, DocumentationPage $documentation_page)
     {
         if ($documentation_page->children()->exists()) {
             return back()->with('error', 'لا يمكن الحذف: توجد صفحات فرعية. انقلها أو احذفها أولاً.');
         }
 
         $documentation_page->delete();
+
+        // Screens that list pages (e.g. a research) stay where the admin was.
+        if ($request->input('redirect') === 'back') {
+            return back()->with('success', 'تم حذف الصفحة');
+        }
 
         return redirect()->route('admin.docs.pages.index')
             ->with('success', 'تم حذف الصفحة');

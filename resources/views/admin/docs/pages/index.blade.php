@@ -160,7 +160,7 @@
             </div>
             <div class="card-body pt-3">
                 <form id="docs-pages-filters" method="GET" action="{{ route('admin.docs.pages.index') }}" class="row g-3 align-items-end">
-                    <div class="col-lg-4 col-md-6">
+                    <div class="col-lg-3 col-md-6">
                         <label class="form-label" for="docs-pages-search">بحث</label>
                         <div class="input-group">
                             <span class="input-group-text bg-transparent"><i class="fe fe-search"></i></span>
@@ -195,6 +195,13 @@
                             <option value="">كل الحالات</option>
                             <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>مسودة</option>
                             <option value="published" {{ request('status') === 'published' ? 'selected' : '' }}>منشور</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label" for="docs-pages-sort">الترتيب</label>
+                        <select name="sort" id="docs-pages-sort" class="form-select">
+                            <option value="">الأقدم أولاً</option>
+                            <option value="desc" {{ request('sort') === 'desc' ? 'selected' : '' }}>الأحدث أولاً</option>
                         </select>
                     </div>
                     <div class="col-lg-2 col-md-6">
@@ -623,6 +630,8 @@ document.documentElement.classList.add('loaded');
             var st = document.getElementById('docs-pages-status');
             if (categorySel) categorySel.value = '';
             if (st) st.value = '';
+            var sortSel = document.getElementById('docs-pages-sort');
+            if (sortSel) sortSel.value = '';
             refreshResearchFilterOptions();
             selectedPages.clear();
             selectAllMatching = false;

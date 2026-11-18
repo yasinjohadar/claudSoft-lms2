@@ -7,13 +7,14 @@ use App\Models\Course;
 use App\Models\DocumentationCategory;
 use App\Models\DocumentationPage;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
 class DocumentationCategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = DocumentationCategory::withCount('pages')->with('parent');
+        $query = DocumentationCategory::withCount(['pages', 'researches'])->with('parent');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -154,7 +155,21 @@ class DocumentationCategoryController extends Controller
             $pagesForTree = $filteredPages;
         }
 
-        $pageTree = $category->buildPageTree($pagesForTree);
+        // Oldest first by default; ?sort=desc flips to newest first.
+        $sortDirection = $request->input('sort') === 'desc' ? 'desc' : 'asc';
+        $fullTree = $category->buildPageTree($pagesForTree, $sortDirection);
+
+        // Paginate top-level articles; each keeps its sub-articles on the same page.
+        $perPage = 25;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $pageTree = new LengthAwarePaginator(
+            array_slice($fullTree, ($currentPage - 1) * $perPage, $perPage),
+            count($fullTree),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()],
+        );
+
         $allCourses = Course::query()->select('id', 'title')->orderBy('title')->get();
 
         return view('admin.docs.categories.show', compact(

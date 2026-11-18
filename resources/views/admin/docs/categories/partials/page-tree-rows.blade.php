@@ -1,5 +1,7 @@
 @php
     $depth = $depth ?? 0;
+    $numberOffset = $numberOffset ?? 0;
+    $numberPrefix = $numberPrefix ?? '';
 @endphp
 
 @foreach ($nodes as $node)
@@ -8,9 +10,11 @@
         $page = $node['page'];
         $children = $node['children'] ?? [];
         $depthClass = $depth > 0 ? 'doc-cat-page-title--depth-' . min($depth, 3) : '';
+        $rowNumber = $numberPrefix . ($numberOffset + $loop->iteration);
     @endphp
 
     <tr class="doc-cat-row">
+        <td><span class="text-muted fw-semibold">{{ $rowNumber }}</span></td>
         <td>
             <div class="doc-cat-page-title {{ $depthClass }}">
                 @if ($depth > 0)
@@ -92,6 +96,8 @@
             'nodes' => $children,
             'category' => $category,
             'depth' => $depth + 1,
+            'numberOffset' => 0,
+            'numberPrefix' => $rowNumber . '.',
         ])
     @endif
 @endforeach

@@ -93,7 +93,7 @@ class DocumentationResearchController extends Controller
             'last_updated' => (clone $baseQuery)->max('updated_at'),
         ];
 
-        $pagesQuery = (clone $baseQuery)->with('parent');
+        $pagesQuery = (clone $baseQuery)->with(['parent', 'category']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -108,12 +108,27 @@ class DocumentationResearchController extends Controller
             $pagesQuery->where('status', $request->status);
         }
 
-        // No pagination: drag-and-drop needs the whole ordered list in one DOM.
-        $pages = $pagesQuery->orderBy('research_sort_order')->orderBy('title')->get();
+        // asc (default) / desc order by creation date and are paginated.
+        // "manual" is the drag-and-drop order: it needs the whole list in one
+        // DOM, so it is the only mode that is not paginated.
+        $sort = in_array($request->input('sort'), ['desc', 'manual'], true)
+            ? $request->input('sort')
+            : 'asc';
+
+        if ($sort === 'manual') {
+            $pages = $pagesQuery->orderBy('research_sort_order')->orderBy('title')->get();
+        } else {
+            $pages = $pagesQuery
+                ->orderBy('created_at', $sort)
+                ->orderBy('id', $sort)
+                ->paginate(25)
+                ->withQueryString();
+        }
 
         // Filtering hides rows, so a drag would persist a misleading order —
         // the view disables dragging while a filter is active.
         $isFiltered = $request->filled('search') || $request->filled('status');
+        $canReorder = $sort === 'manual' && ! $isFiltered;
 
         $unassignedCount = DocumentationPage::query()
             ->where('documentation_category_id', $research->documentation_category_id)
@@ -121,7 +136,7 @@ class DocumentationResearchController extends Controller
             ->count();
 
         return view('admin.docs.researches.show', compact(
-            'research', 'pages', 'stats', 'isFiltered', 'unassignedCount'
+            'research', 'pages', 'stats', 'isFiltered', 'unassignedCount', 'sort', 'canReorder'
         ));
     }
 

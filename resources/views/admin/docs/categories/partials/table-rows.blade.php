@@ -69,6 +69,14 @@
                title="فتح صفحة القسم">
                 <i class="fe fe-folder"></i>
             </a>
+            <a href="{{ route('admin.docs.researches.index', ['documentation_category_id' => $category->id]) }}"
+               class="btn btn-sm doc-cat-action-btn position-relative"
+               title="أبحاث القسم ({{ $category->researches_count ?? 0 }})">
+                <i class="fe fe-layers"></i>
+                @if(($category->researches_count ?? 0) > 0)
+                    <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary" style="font-size:.6rem">{{ $category->researches_count }}</span>
+                @endif
+            </a>
             <form action="{{ route('admin.docs.categories.toggle-active', $category) }}" method="POST" class="d-inline">
                 @csrf
                 <button type="submit"

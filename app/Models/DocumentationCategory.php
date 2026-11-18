@@ -67,7 +67,10 @@ class DocumentationCategory extends Model
      * @param  iterable<int, DocumentationPage>  $pages
      * @return list<array{page: DocumentationPage, children: list<mixed>}>
      */
-    public function buildPageTree(iterable $pages): array
+    /**
+     * @param  string|null  $createdDirection  null keeps sort_order/title; 'asc'/'desc' orders by creation date.
+     */
+    public function buildPageTree(iterable $pages, ?string $createdDirection = null): array
     {
         $collection = $pages instanceof Collection
             ? $pages
@@ -75,9 +78,14 @@ class DocumentationCategory extends Model
 
         $byParent = $collection->groupBy(fn (DocumentationPage $page) => $page->parent_id ?? 0);
 
-        $build = function (int $parentId) use (&$build, $byParent): array {
+        $sortKey = $createdDirection === null
+            ? fn (DocumentationPage $page) => sprintf('%05d-%s', $page->sort_order, $page->title)
+            : fn (DocumentationPage $page) => sprintf('%015d-%010d', $page->created_at?->getTimestamp() ?? 0, $page->id);
+        $descending = $createdDirection === 'desc';
+
+        $build = function (int $parentId) use (&$build, $byParent, $sortKey, $descending): array {
             return $byParent->get($parentId, collect())
-                ->sortBy(fn (DocumentationPage $page) => sprintf('%05d-%s', $page->sort_order, $page->title))
+                ->sortBy($sortKey, SORT_REGULAR, $descending)
                 ->map(fn (DocumentationPage $page) => [
                     'page' => $page,
                     'children' => $build($page->id),
