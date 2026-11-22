@@ -230,6 +230,8 @@
         </div>
     </div>
 
+    @include('admin.pages.payments.partials.review-modals')
+
     <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">

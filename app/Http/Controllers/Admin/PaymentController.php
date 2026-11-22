@@ -397,6 +397,34 @@ class PaymentController extends Controller
     }
 
     /**
+     * Correct the amount a student entered on a pending payment before approving it.
+     */
+    public function updateAmount(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $payment = Payment::findOrFail($id);
+
+        try {
+            $this->paymentSubmissionService->updatePendingAmount(
+                $payment,
+                auth()->user(),
+                (float) $validated['amount'],
+                $validated['reason'] ?? null
+            );
+
+            return redirect()
+                ->back()
+                ->with('success', 'تم تعديل مبلغ الدفعة '.$payment->payment_number.' إلى $'.number_format((float) $payment->amount, 2).'.');
+        } catch (InvalidArgumentException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
      * Reject a pending student payment submission.
      */
     public function reject(Request $request, string $id)

@@ -255,6 +255,7 @@ Route::prefix('admin')
         Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show']);
         Route::post('payments/{id}/approve', [PaymentController::class, 'approve'])->name('payments.approve');
         Route::post('payments/{id}/reject', [PaymentController::class, 'reject'])->name('payments.reject');
+        Route::post('payments/{id}/update-amount', [PaymentController::class, 'updateAmount'])->name('payments.update-amount');
         Route::get('payments/{id}/receipt', [PaymentController::class, 'downloadReceipt'])->name('payments.receipt');
         Route::post('payments/{id}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
         Route::post('payments/{id}/refund', [PaymentController::class, 'refund'])->name('payments.refund');

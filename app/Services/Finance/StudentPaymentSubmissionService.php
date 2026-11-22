@@ -140,6 +140,56 @@ class StudentPaymentSubmissionService
         });
     }
 
+    /**
+     * Correct the amount of a pending payment (e.g. the student left the default amount
+     * instead of typing what was actually transferred). The change is appended to the notes.
+     */
+    public function updatePendingAmount(Payment $payment, User $admin, float $newAmount, ?string $reason = null): Payment
+    {
+        if ($payment->status !== 'pending') {
+            throw new InvalidArgumentException('يمكن تعديل مبلغ الدفعات المعلقة فقط.');
+        }
+
+        $invoice = $payment->invoice;
+        if (! $invoice) {
+            throw new InvalidArgumentException('لا توجد فاتورة مرتبطة بهذه الدفعة.');
+        }
+
+        $newAmount = round($newAmount, 2);
+        if ($newAmount <= 0) {
+            throw new InvalidArgumentException('يجب أن يكون المبلغ أكبر من صفر.');
+        }
+
+        $completedPaid = (float) $invoice->payments()->where('status', 'completed')->sum('amount');
+        $maxAllowed = max(0, round((float) $invoice->total_amount - $completedPaid, 2));
+        if ($newAmount > $maxAllowed) {
+            throw new InvalidArgumentException('المبلغ أكبر من المتبقي على الفاتورة ($'.number_format($maxAllowed, 2).').');
+        }
+
+        $oldAmount = round((float) $payment->amount, 2);
+        if (abs($oldAmount - $newAmount) < 0.005) {
+            return $payment;
+        }
+
+        $line = sprintf(
+            '[تعديل المبلغ] من $%s إلى $%s بواسطة %s بتاريخ %s',
+            number_format($oldAmount, 2),
+            number_format($newAmount, 2),
+            $admin->name,
+            now()->format('Y-m-d H:i')
+        );
+        if ($reason) {
+            $line .= ' — السبب: '.$reason;
+        }
+
+        $payment->amount = $newAmount;
+        $payment->notes = trim(($payment->notes ? $payment->notes."
+" : '').$line);
+        $payment->save();
+
+        return $payment;
+    }
+
     public function reject(Payment $payment, User $admin, string $reason): Payment
     {
         if ($payment->status !== 'pending') {

@@ -74,7 +74,25 @@
         </td>
         <td>
             {{-- المبلغ كما أدخله الطالب (أو الإدارة) مع قيمة الفاتورة للمطابقة --}}
-            <strong class="d-block {{ $payment->status === 'pending' ? 'text-warning' : '' }}">${{ number_format($payment->amount, 2) }}</strong>
+            @php
+                $remainingForPayment = $payment->invoice
+                    ? max(0, round((float) $payment->invoice->total_amount - (float) $payment->invoice->paid_amount, 2))
+                    : 0;
+            @endphp
+            <div class="d-flex align-items-center gap-1">
+                <strong class="{{ $payment->status === 'pending' ? 'text-warning' : '' }}">${{ number_format($payment->amount, 2) }}</strong>
+                @if($payment->status === 'pending' && $payment->invoice)
+                    <button type="button"
+                            class="btn btn-sm btn-icon btn-primary-light p-0 px-1 lh-1 js-edit-payment-amount"
+                            title="تعديل المبلغ"
+                            data-payment-id="{{ $payment->id }}"
+                            data-payment-number="{{ $payment->payment_number }}"
+                            data-amount="{{ number_format($payment->amount, 2, '.', '') }}"
+                            data-remaining="{{ number_format($remainingForPayment, 2, '.', '') }}">
+                        <i class="fe fe-edit-2 fs-11"></i>
+                    </button>
+                @endif
+            </div>
             @if($payment->has_receipt)
                 <small class="d-block text-muted"><i class="fe fe-user me-1"></i>أدخله الطالب</small>
             @endif
@@ -141,11 +159,23 @@
                     <i class="fe fe-eye"></i>
                 </a>
 
-                @if($isPendingReview($payment))
-                    <a href="{{ route('payments.receipt', $payment->id) }}"
-                       class="btn btn-sm btn-primary-light" title="عرض الإيصال" target="_blank">
+                @if($payment->has_receipt)
+                    <button type="button"
+                            class="btn btn-sm btn-primary-light js-preview-receipt"
+                            title="معاينة الإيصال"
+                            data-receipt-url="{{ route('payments.receipt', $payment->id) }}"
+                            data-is-image="{{ $payment->is_receipt_image ? '1' : '0' }}"
+                            data-pending="{{ $payment->status === 'pending' ? '1' : '0' }}"
+                            data-payment-id="{{ $payment->id }}"
+                            data-payment-number="{{ $payment->payment_number }}"
+                            data-student-name="{{ $payment->invoice?->student?->name }}"
+                            data-amount="{{ number_format($payment->amount, 2, '.', '') }}"
+                            data-remaining="{{ number_format($remainingForPayment, 2, '.', '') }}">
                         <i class="fe fe-file-text"></i>
-                    </a>
+                    </button>
+                @endif
+
+                @if($isPendingReview($payment))
                     <form action="{{ route('payments.approve', $payment->id) }}" method="POST" class="d-inline"
                           onsubmit="return confirm('الموافقة على هذه الدفعة وتسجيلها في حساب الطالب؟');">
                         @csrf
