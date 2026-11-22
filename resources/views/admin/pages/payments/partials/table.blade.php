@@ -170,19 +170,38 @@
                             data-payment-number="{{ $payment->payment_number }}"
                             data-student-name="{{ $payment->invoice?->student?->name }}"
                             data-amount="{{ number_format($payment->amount, 2, '.', '') }}"
-                            data-remaining="{{ number_format($remainingForPayment, 2, '.', '') }}">
+                            data-remaining="{{ number_format($remainingForPayment, 2, '.', '') }}"
+                            data-invoice-number="{{ $payment->invoice?->invoice_number }}"
+                            data-program="{{ $payment->invoice ? ($payment->invoice->relatedPrograms()->map(fn ($p) => $p['type'].': '.$p['name'])->implode('، ') ?: $payment->invoice->items->first()?->description) : '' }}"
+                            data-total="{{ number_format((float) $payment->invoice?->total_amount, 2, '.', '') }}"
+                            data-paid="{{ number_format((float) $payment->invoice?->paid_amount, 2, '.', '') }}"
+                            data-method="{{ $payment->paymentMethod?->name }}">
                         <i class="fe fe-file-text"></i>
                     </button>
                 @endif
 
                 @if($isPendingReview($payment))
-                    <form action="{{ route('payments.approve', $payment->id) }}" method="POST" class="d-inline"
-                          onsubmit="return confirm('الموافقة على هذه الدفعة وتسجيلها في حساب الطالب؟');">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-success-light" title="موافقة">
-                            <i class="fe fe-check"></i>
-                        </button>
-                    </form>
+                    @php
+                        $approvePrograms = $payment->invoice
+                            ? $payment->invoice->relatedPrograms()->map(fn ($p) => $p['type'].': '.$p['name'])->implode('، ')
+                            : '';
+                        if ($approvePrograms === '' && $payment->invoice) {
+                            $approvePrograms = (string) ($payment->invoice->items->first()?->description ?? '');
+                        }
+                    @endphp
+                    <button type="button" class="btn btn-sm btn-success-light js-approve-payment" title="موافقة"
+                            data-payment-id="{{ $payment->id }}"
+                            data-payment-number="{{ $payment->payment_number }}"
+                            data-student-name="{{ $payment->invoice?->student?->name }}"
+                            data-invoice-number="{{ $payment->invoice?->invoice_number }}"
+                            data-program="{{ $approvePrograms }}"
+                            data-amount="{{ number_format($payment->amount, 2, '.', '') }}"
+                            data-total="{{ number_format((float) $payment->invoice?->total_amount, 2, '.', '') }}"
+                            data-paid="{{ number_format((float) $payment->invoice?->paid_amount, 2, '.', '') }}"
+                            data-remaining="{{ number_format($remainingForPayment, 2, '.', '') }}"
+                            data-method="{{ $payment->paymentMethod?->name }}">
+                        <i class="fe fe-check"></i>
+                    </button>
                 @endif
 
                 @if($payment->invoice_id && $payment->invoice && $payment->invoice->remaining_amount > 0)
