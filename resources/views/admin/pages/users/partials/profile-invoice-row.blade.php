@@ -9,7 +9,19 @@
     };
 @endphp
 <tr class="admin-users-table__row" id="profile-invoice-row-{{ $invoice->id }}" data-invoice-id="{{ $invoice->id }}">
-    <td>{{ $invoice->invoice_number }}</td>
+    <td>
+        <a href="{{ route('invoices.show', $invoice->id) }}" class="text-primary text-decoration-none fw-semibold">{{ $invoice->invoice_number }}</a>
+    </td>
+    <td>
+        @php $programs = $invoice->relatedPrograms(); @endphp
+        @forelse($programs as $program)
+            <span class="badge bg-primary-transparent text-primary" title="{{ $program['type'] }}">
+                <i class="fe {{ $program['icon'] }} me-1"></i>{{ $program['type'] }}: {{ $program['name'] }}
+            </span>
+        @empty
+            <small class="text-muted" title="{{ $invoice->items->first()?->description }}">{{ \Illuminate\Support\Str::limit($invoice->items->first()?->description ?? '—', 70) }}</small>
+        @endforelse
+    </td>
     <td>{{ optional($invoice->issue_date)->format('Y-m-d') }}</td>
     <td>{{ number_format($invoice->total_amount, 2) }}</td>
     <td>{{ number_format($invoice->paid_amount, 2) }}</td>

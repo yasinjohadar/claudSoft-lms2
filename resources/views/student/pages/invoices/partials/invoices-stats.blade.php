@@ -13,6 +13,9 @@
             'value' => round($stats['paid_amount'], 2),
             'prefix' => '$',
             'decimals' => true,
+            'hint' => ($stats['pending_amount'] ?? 0) > 0
+                ? '+ $' . number_format($stats['pending_amount'], 2) . ' قيد المراجعة (غير محتسب)'
+                : null,
         ],
         [
             'variant' => 'orange',
@@ -45,6 +48,9 @@
                             data-countup="{{ $card['value'] }}"
                             @if(!empty($card['prefix'])) data-countup-prefix="{{ $card['prefix'] }}" @endif
                             @if(!empty($card['decimals'])) data-countup-decimals="2" @endif>0</h3>
+                        @if(!empty($card['hint']))
+                            <small class="admin-stats-card__hint d-block mt-1">{{ $card['hint'] }}</small>
+                        @endif
                     </div>
                 </div>
             </div>

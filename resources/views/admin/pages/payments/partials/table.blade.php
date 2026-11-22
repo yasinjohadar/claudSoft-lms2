@@ -72,7 +72,27 @@
                 <span class="text-muted">—</span>
             @endif
         </td>
-        <td><strong>${{ number_format($payment->amount, 2) }}</strong></td>
+        <td>
+            {{-- المبلغ كما أدخله الطالب (أو الإدارة) مع قيمة الفاتورة للمطابقة --}}
+            <strong class="d-block {{ $payment->status === 'pending' ? 'text-warning' : '' }}">${{ number_format($payment->amount, 2) }}</strong>
+            @if($payment->has_receipt)
+                <small class="d-block text-muted"><i class="fe fe-user me-1"></i>أدخله الطالب</small>
+            @endif
+            @if($payment->invoice)
+                <small class="d-block text-muted">قيمة الفاتورة: ${{ number_format($payment->invoice->total_amount, 2) }}</small>
+
+                @if($payment->status === 'pending')
+                    @php $diff = round((float) $payment->invoice->remaining_amount - (float) $payment->amount, 2); @endphp
+                    @if(abs($diff) < 0.01)
+                        <span class="badge bg-success-transparent text-success mt-1"><i class="fe fe-check me-1"></i>مطابق للمتبقي</span>
+                    @elseif($diff > 0)
+                        <span class="badge bg-warning-transparent text-warning mt-1">أقل من المتبقي بـ ${{ number_format($diff, 2) }}</span>
+                    @else
+                        <span class="badge bg-danger-transparent text-danger mt-1">أكبر من المتبقي بـ ${{ number_format(abs($diff), 2) }}</span>
+                    @endif
+                @endif
+            @endif
+        </td>
         <td>
             @if($payment->invoice && $payment->invoice->remaining_amount > 0)
                 <span class="text-danger fw-semibold">${{ number_format($payment->invoice->remaining_amount, 2) }}</span>

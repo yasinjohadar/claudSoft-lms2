@@ -4,23 +4,19 @@
             <span class="avatar avatar-sm bg-success-transparent">
                 <i class="fe fe-credit-card text-success"></i>
             </span>
-            <h6 class="card-title mb-0">المدفوعات</h6>
+            <h6 class="card-title mb-0">تسلسل الدفعات</h6>
         </div>
 
         @if($invoice->hasPendingPayment())
             <div class="alert alert-warning small mb-3">
                 <i class="fe fe-clock me-1"></i>
-                <strong>طلب دفع قيد المراجعة.</strong>
-                سيتم إشعارك عند الموافقة أو الرفض.
+                <strong>طلب دفع بقيمة ${{ number_format($invoice->pendingPaymentsAmount(), 2) }} قيد المراجعة.</strong>
+                لا يُحتسب المبلغ ضمن المدفوع حتى تتم الموافقة، وسيتم إشعارك عند الموافقة أو الرفض.
             </div>
         @endif
 
         @if($invoice->payments->count() > 0)
-            <div class="student-invoice-payments-list">
-                @foreach($invoice->payments->sortByDesc('created_at') as $payment)
-                    @include('student.pages.invoices.partials.payment-item', ['payment' => $payment])
-                @endforeach
-            </div>
+            @include('student.pages.invoices.partials.payments-timeline', ['invoice' => $invoice])
         @else
             <div class="student-my-courses-empty text-center py-4">
                 <div class="student-my-courses-empty__icon mb-3" style="width: 64px; height: 64px; font-size: 1.5rem;">

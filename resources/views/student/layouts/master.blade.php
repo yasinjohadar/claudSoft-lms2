@@ -74,11 +74,25 @@
             font-weight: 600;
         }
 
+        /*
+         * Top banners (due invoices / profile completion) are rendered as .main-content.app-content
+         * blocks before the page content. The first block keeps the theme's header offset so it is
+         * not hidden under the fixed header; every block after a banner only needs a small gap.
+         */
         @media (min-width: 992px) {
-            .profile-completion-wrapper.app-content {
+            .student-top-banner.app-content {
                 min-height: auto;
-                margin-block-start: 0.5rem;
                 margin-block-end: 0;
+            }
+
+            .student-top-banner ~ .app-content {
+                margin-block-start: 0.5rem;
+            }
+        }
+
+        @media (max-width: 991.98px) {
+            .student-top-banner ~ .main-content {
+                padding-block-start: 0.5rem;
             }
         }
 
@@ -149,13 +163,6 @@
             font-weight: 600;
         }
 
-        @media (min-width: 992px) {
-            .due-invoices-wrapper.app-content {
-                min-height: auto;
-                margin-block-start: 0.5rem;
-                margin-block-end: 0;
-            }
-        }
 
         @media (max-width: 768px) {
             .due-invoices-banner {
@@ -214,7 +221,7 @@
             $studentProfileLocked = $studentProfileLocked ?? false;
         @endphp
         @if($profileCompletion && $profileCompletion['percentage'] < 100 && ! $studentProfileLocked)
-            <div class="main-content app-content profile-completion-wrapper">
+            <div class="main-content app-content profile-completion-wrapper student-top-banner">
                 <div class="container-fluid mt-2">
                     <div class="profile-completion-banner shadow-sm">
                         <div class="profile-completion-main">

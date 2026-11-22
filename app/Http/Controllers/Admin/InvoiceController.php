@@ -16,7 +16,14 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['student', 'items.campEnrollment.camp', 'payments'])
+        $query = Invoice::with([
+            'student',
+            'items.campEnrollment.camp',
+            'items.itemable' => fn (\Illuminate\Database\Eloquent\Relations\MorphTo $morph) => $morph->morphWith([
+                \App\Models\CourseGroupMember::class => ['group'],
+            ]),
+            'payments',
+        ])
             ->orderBy('created_at', 'desc');
 
         // Filter by search (student name/email or invoice number)
@@ -91,7 +98,14 @@ class InvoiceController extends Controller
      */
     public function dueOverdue(Request $request)
     {
-        $query = Invoice::with(['student', 'items.campEnrollment.camp', 'payments'])
+        $query = Invoice::with([
+            'student',
+            'items.campEnrollment.camp',
+            'items.itemable' => fn (\Illuminate\Database\Eloquent\Relations\MorphTo $morph) => $morph->morphWith([
+                \App\Models\CourseGroupMember::class => ['group'],
+            ]),
+            'payments',
+        ])
             ->unpaid()
             ->orderBy('created_at', 'desc');
 
@@ -153,6 +167,85 @@ class InvoiceController extends Controller
         }
 
         return view('admin.pages.invoices.due-overdue', compact('invoices', 'trainingCamps', 'stats'));
+    }
+
+    /**
+     * Display invoices that are fully settled (invoice status = paid),
+     * regardless of individual payment statuses.
+     */
+    public function fullyPaid(Request $request)
+    {
+        $query = Invoice::with([
+            'student',
+            'items.campEnrollment.camp',
+            'items.itemable' => fn (\Illuminate\Database\Eloquent\Relations\MorphTo $morph) => $morph->morphWith([
+                \App\Models\CourseGroupMember::class => ['group'],
+            ]),
+            'payments',
+        ])
+            ->where('status', 'paid')
+            ->withMax(['payments as last_paid_at' => fn ($q) => $q->where('status', 'completed')], 'payment_date')
+            ->orderByDesc('last_paid_at')
+            ->orderByDesc('id');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                    ->orWhereHas('student', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // program: "camp:{id}" (training camp) | "group:{id}" (camp-style course group)
+        if ($request->filled('program') && str_contains($request->program, ':')) {
+            [$type, $id] = explode(':', $request->program, 2);
+            if ($type === 'camp') {
+                $query->whereHas('items.campEnrollment', fn ($q) => $q->where('camp_id', $id));
+            } elseif ($type === 'group') {
+                $query->whereHas('items', function ($q) use ($id) {
+                    $q->where('itemable_type', \App\Models\CourseGroupMember::class)
+                        ->whereIn('itemable_id', \App\Models\CourseGroupMember::where('group_id', $id)->select('id'));
+                });
+            }
+        }
+
+        // Filter by the date of completed payments (when the money was received)
+        if ($request->filled('from_date') || $request->filled('to_date')) {
+            $query->whereHas('payments', function ($q) use ($request) {
+                $q->where('status', 'completed');
+                if ($request->filled('from_date')) {
+                    $q->whereDate('payment_date', '>=', $request->from_date);
+                }
+                if ($request->filled('to_date')) {
+                    $q->whereDate('payment_date', '<=', $request->to_date);
+                }
+            });
+        }
+
+        $stats = [
+            'total_count' => (clone $query)->count(),
+            'paid_amount' => (float) (clone $query)->sum('total_amount'),
+            'students_count' => (clone $query)->distinct('student_id')->count('student_id'),
+        ];
+
+        $invoices = $query->paginate(20)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'stats' => view('admin.pages.invoices.partials.fully-paid-stats', compact('stats'))->render(),
+                'table' => view('admin.pages.invoices.partials.table', compact('invoices'))->render(),
+                'modals' => view('admin.pages.invoices.partials.table-modals', compact('invoices'))->render(),
+                'pagination' => $invoices->hasPages() ? $invoices->links()->render() : '',
+            ]);
+        }
+
+        $trainingCamps = TrainingCamp::orderBy('name')->get(['id', 'name']);
+        $campGroups = \App\Models\CourseGroup::where('is_camp', true)->orderBy('name')->get(['id', 'name']);
+
+        return view('admin.pages.invoices.fully-paid', compact('invoices', 'stats', 'trainingCamps', 'campGroups'));
     }
 
     /**

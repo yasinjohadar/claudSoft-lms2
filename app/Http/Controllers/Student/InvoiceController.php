@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Models\CourseGroupMember;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Services\Finance\StudentPaymentSubmissionService;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
@@ -22,7 +24,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['items.campEnrollment.camp', 'payments', 'pendingPayment'])
+        $query = Invoice::with($this->invoiceRelations())
             ->where('student_id', Auth::id())
             ->orderBy('issue_date', 'desc');
 
@@ -38,6 +40,7 @@ class InvoiceController extends Controller
             'paid_amount' => Invoice::where('student_id', Auth::id())->sum('paid_amount'),
             'remaining_amount' => Invoice::where('student_id', Auth::id())->sum('remaining_amount'),
             'overdue_count' => Invoice::where('student_id', Auth::id())->overdue()->count(),
+            'pending_amount' => Payment::where('student_id', Auth::id())->where('status', 'pending')->sum('amount'),
         ];
 
         $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
@@ -50,13 +53,28 @@ class InvoiceController extends Controller
      */
     public function show(string $id)
     {
-        $invoice = Invoice::with(['items.campEnrollment.camp', 'payments.paymentMethod', 'pendingPayment'])
+        $invoice = Invoice::with($this->invoiceRelations())
             ->where('student_id', Auth::id())
             ->findOrFail($id);
 
         $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('order')->get();
 
         return view('student.pages.invoices.show', compact('invoice', 'paymentMethods'));
+    }
+
+    /**
+     * Relations needed to show the program (camp / diploma) and the payment timeline.
+     */
+    protected function invoiceRelations(): array
+    {
+        return [
+            'items.campEnrollment.camp',
+            'items.itemable' => fn (MorphTo $morph) => $morph->morphWith([
+                CourseGroupMember::class => ['group'],
+            ]),
+            'payments.paymentMethod',
+            'pendingPayment',
+        ];
     }
 
     /**

@@ -119,6 +119,7 @@
                                             <th scope="col">المبلغ الإجمالي</th>
                                             <th scope="col">المدفوع</th>
                                             <th scope="col">المتبقي</th>
+                                            <th scope="col">مبلغ الطالب</th>
                                             <th scope="col">الحالة</th>
                                             <th scope="col">العمليات</th>
                                         </tr>
@@ -156,7 +157,7 @@
             const pagination = $('#invoices-pagination');
             const statsContainer = $('#invoices-stats-container');
 
-            tableBody.html('<tr><td colspan="11" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></td></tr>');
+            tableBody.html('<tr><td colspan="12" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">جاري التحميل...</span></div></td></tr>');
 
             const formData = {
                 search: $('#search').val(),
@@ -185,7 +186,7 @@
                     isLoading = false;
                 },
                 error: function() {
-                    tableBody.html('<tr><td colspan="11" class="text-center py-5"><div class="alert alert-danger">حدث خطأ أثناء تحميل الفواتير</div></td></tr>');
+                    tableBody.html('<tr><td colspan="12" class="text-center py-5"><div class="alert alert-danger">حدث خطأ أثناء تحميل الفواتير</div></td></tr>');
                     isLoading = false;
                 }
             });

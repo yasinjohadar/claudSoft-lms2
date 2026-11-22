@@ -13,23 +13,10 @@
                 <div class="modal-body">
                     <div class="alert alert-info small mb-4">
                         <i class="fe fe-info me-1"></i>
-                        سيتم مراجعة طلبك من قبل الإدارة بعد رفع الإيصال.
+                        سيتم مراجعة طلبك من قبل الإدارة بعد رفع الإيصال. لن يُحتسب المبلغ ضمن المدفوع حتى تتم الموافقة.
                     </div>
 
-                    <div class="mb-3">
-                        <label for="index_payment_amount" class="form-label">المبلغ <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number"
-                                   class="form-control"
-                                   id="index_payment_amount"
-                                   name="amount"
-                                   step="0.01"
-                                   min="0.01"
-                                   required>
-                        </div>
-                        <small class="text-muted">المبلغ المتبقي: $<span id="indexPayRemaining"></span></small>
-                    </div>
+                    @include('student.pages.invoices.partials.payment-amount-field', ['inputId' => 'index_payment_amount'])
 
                     <div class="mb-3">
                         <label for="index_payment_date" class="form-label">تاريخ الدفع <span class="text-danger">*</span></label>

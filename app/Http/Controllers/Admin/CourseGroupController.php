@@ -345,7 +345,7 @@ class CourseGroupController extends Controller
                 ->toArray();
 
             $studentOutstandingInvoicesById = Invoice::query()
-                ->with(['items.campEnrollment.camp:id,name'])
+                ->with($this->invoiceProgramRelations())
                 ->whereIn('student_id', $memberIdsInPage)
                 ->where('remaining_amount', '>', 0)
                 ->orderBy('due_date')
@@ -353,12 +353,7 @@ class CourseGroupController extends Controller
                 ->groupBy('student_id')
                 ->map(function ($invoices) {
                     return $invoices->map(function ($invoice) {
-                        $campNames = $invoice->items
-                            ->map(fn ($item) => optional(optional($item->campEnrollment)->camp)->name)
-                            ->filter()
-                            ->unique()
-                            ->values()
-                            ->toArray();
+                        $campNames = $this->invoiceProgramLabels($invoice);
 
                         return [
                             'id' => $invoice->id,
@@ -374,7 +369,10 @@ class CourseGroupController extends Controller
                 ->toArray();
 
             $studentPaymentsById = Payment::query()
-                ->with(['invoice:id,invoice_number', 'paymentMethod:id,name'])
+                ->with(array_merge(
+                    ['invoice:id,invoice_number', 'paymentMethod:id,name'],
+                    $this->invoiceProgramRelations('invoice.')
+                ))
                 ->whereIn('student_id', $memberIdsInPage)
                 ->where('status', 'completed')
                 ->orderByDesc('payment_date')
@@ -387,6 +385,7 @@ class CourseGroupController extends Controller
                             'amount' => (float) $payment->amount,
                             'payment_date' => optional($payment->payment_date)->format('Y-m-d'),
                             'invoice_number' => optional($payment->invoice)->invoice_number,
+                            'camp_names' => $payment->invoice ? $this->invoiceProgramLabels($payment->invoice) : [],
                             'payment_method' => optional($payment->paymentMethod)->name,
                         ];
                     })->values()->toArray();
@@ -1584,7 +1583,7 @@ class CourseGroupController extends Controller
                 ->toArray();
 
             $studentOutstandingInvoicesById = Invoice::query()
-                ->with(['items.campEnrollment.camp:id,name'])
+                ->with($this->invoiceProgramRelations())
                 ->whereIn('student_id', $memberIdsInPage)
                 ->where('remaining_amount', '>', 0)
                 ->orderBy('due_date')
@@ -1592,12 +1591,7 @@ class CourseGroupController extends Controller
                 ->groupBy('student_id')
                 ->map(function ($invoices) {
                     return $invoices->map(function ($invoice) {
-                        $campNames = $invoice->items
-                            ->map(fn ($item) => optional(optional($item->campEnrollment)->camp)->name)
-                            ->filter()
-                            ->unique()
-                            ->values()
-                            ->toArray();
+                        $campNames = $this->invoiceProgramLabels($invoice);
 
                         return [
                             'id' => $invoice->id,
@@ -1613,7 +1607,10 @@ class CourseGroupController extends Controller
                 ->toArray();
 
             $studentPaymentsById = Payment::query()
-                ->with(['invoice:id,invoice_number', 'paymentMethod:id,name'])
+                ->with(array_merge(
+                    ['invoice:id,invoice_number', 'paymentMethod:id,name'],
+                    $this->invoiceProgramRelations('invoice.')
+                ))
                 ->whereIn('student_id', $memberIdsInPage)
                 ->where('status', 'completed')
                 ->orderByDesc('payment_date')
@@ -1626,6 +1623,7 @@ class CourseGroupController extends Controller
                             'amount' => (float) $payment->amount,
                             'payment_date' => optional($payment->payment_date)->format('Y-m-d'),
                             'invoice_number' => optional($payment->invoice)->invoice_number,
+                            'camp_names' => $payment->invoice ? $this->invoiceProgramLabels($payment->invoice) : [],
                             'payment_method' => optional($payment->paymentMethod)->name,
                         ];
                     })->values()->toArray();
@@ -2998,5 +2996,37 @@ class CourseGroupController extends Controller
             $validated['end_date'] = null;
             $validated['require_payment_receipt'] = false;
         }
+    }
+
+    /**
+     * Eager-load map needed to resolve which camp / diploma an invoice belongs to.
+     */
+    private function invoiceProgramRelations(string $prefix = ''): array
+    {
+        return [
+            $prefix.'items.campEnrollment.camp:id,name',
+            $prefix.'items.itemable' => fn (\Illuminate\Database\Eloquent\Relations\MorphTo $morph) => $morph->morphWith([
+                CourseGroupMember::class => ['group:id,name,is_camp'],
+            ]),
+        ];
+    }
+
+    /**
+     * Labels like "معسكر: M12 - Camp" for an invoice; falls back to the first item's
+     * description when the linked membership no longer exists.
+     *
+     * @return array<int, string>
+     */
+    private function invoiceProgramLabels(Invoice $invoice): array
+    {
+        $labels = $invoice->relatedPrograms()
+            ->map(fn ($p) => $p['type'].': '.$p['name'])
+            ->all();
+
+        if (empty($labels) && ($description = $invoice->items->first()?->description)) {
+            $labels[] = $description;
+        }
+
+        return $labels;
     }
 }

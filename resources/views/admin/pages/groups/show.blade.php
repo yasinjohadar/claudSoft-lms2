@@ -1041,7 +1041,7 @@
                 invoicesEl.innerHTML =
                     '<div class="table-responsive">' +
                     '<table class="table table-sm table-bordered align-middle mb-0">' +
-                    '<thead class="table-light"><tr><th>#</th><th>رقم الفاتورة</th><th>المبلغ المتبقي</th><th>تاريخ الاستحقاق</th><th>المصدر</th></tr></thead>' +
+                    '<thead class="table-light"><tr><th>#</th><th>رقم الفاتورة</th><th>المبلغ المتبقي</th><th>تاريخ الاستحقاق</th><th>المعسكر / الدبلوم</th></tr></thead>' +
                     '<tbody>' + rows + '</tbody></table></div>';
             }
         }
@@ -1053,18 +1053,25 @@
             } else {
                 let rows = '';
                 payments.forEach(function (payment) {
+                    const payCamps = Array.isArray(payment.camp_names) ? payment.camp_names : [];
+                    const paySource = payCamps.length
+                        ? payCamps.map(function (n) {
+                            return '<span class="badge bg-primary-transparent text-primary me-1">' + escapeHtmlPayment(n) + '</span>';
+                        }).join('')
+                        : '<span class="text-muted">—</span>';
                     rows += '<tr>' +
                         '<td>' + escapeHtmlPayment(payment.payment_number ?? '-') + '</td>' +
                         '<td><span class="text-success fw-bold">' + formatMoneyPayment(payment.amount) + '</span></td>' +
                         '<td>' + escapeHtmlPayment(payment.payment_date ?? '-') + '</td>' +
                         '<td>' + escapeHtmlPayment(payment.invoice_number ?? '-') + '</td>' +
+                        '<td>' + paySource + '</td>' +
                         '<td>' + escapeHtmlPayment(payment.payment_method ?? '-') + '</td>' +
                     '</tr>';
                 });
                 paymentsEl.innerHTML =
                     '<div class="table-responsive">' +
                     '<table class="table table-sm table-bordered align-middle mb-0">' +
-                    '<thead class="table-light"><tr><th>رقم الدفعة</th><th>المبلغ</th><th>التاريخ</th><th>رقم الفاتورة</th><th>طريقة الدفع</th></tr></thead>' +
+                    '<thead class="table-light"><tr><th>رقم الدفعة</th><th>المبلغ</th><th>التاريخ</th><th>رقم الفاتورة</th><th>المعسكر / الدبلوم</th><th>طريقة الدفع</th></tr></thead>' +
                     '<tbody>' + rows + '</tbody></table></div>';
             }
         }

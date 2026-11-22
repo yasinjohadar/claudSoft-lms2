@@ -1,4 +1,4 @@
-<div class="main-content app-content due-invoices-wrapper"
+<div class="main-content app-content due-invoices-wrapper student-top-banner"
      id="dueInvoicesBanner"
      data-dismiss-key="{{ $alert['dismiss_key'] }}">
     <div class="container-fluid mt-2">

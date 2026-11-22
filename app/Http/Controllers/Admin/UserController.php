@@ -387,12 +387,20 @@ class UserController extends Controller
 
         // Payments & invoices
         $invoices = Invoice::where('student_id', $id)
+            ->with([
+                'items.campEnrollment.camp',
+                'items.itemable' => fn (\Illuminate\Database\Eloquent\Relations\MorphTo $morph) => $morph->morphWith([
+                    CourseGroupMember::class => ['group'],
+                ]),
+            ])
             ->orderByDesc('issue_date')
             ->limit(10)
             ->get();
 
         $payments = Payment::where('student_id', $id)
-            ->with('paymentMethod', 'invoice')
+            ->with(['paymentMethod', 'invoice.items.campEnrollment.camp', 'invoice.items.itemable' => fn (\Illuminate\Database\Eloquent\Relations\MorphTo $morph) => $morph->morphWith([
+                CourseGroupMember::class => ['group'],
+            ])])
             ->orderByDesc('payment_date')
             ->limit(10)
             ->get();

@@ -236,12 +236,21 @@
                                              class="img-fluid rounded border"
                                              style="max-height: 420px;">
                                     </div>
+                                @elseif(strtolower(pathinfo($payment->receipt_path, PATHINFO_EXTENSION)) === 'pdf')
+                                    {{-- عرض الـ PDF مباشرة داخل الصفحة بدون تحميل --}}
+                                    <div class="mb-3 rounded border overflow-hidden">
+                                        <iframe src="{{ route('payments.receipt', $payment->id) }}#toolbar=1&view=FitH"
+                                                title="إيصال الدفع (PDF)"
+                                                class="d-block w-100"
+                                                style="height: 640px; border: 0;"
+                                                loading="lazy"></iframe>
+                                    </div>
                                 @endif
                                 <a href="{{ route('payments.receipt', $payment->id) }}"
                                    class="btn btn-outline-primary"
                                    target="_blank">
                                     <i class="fe fe-external-link me-2"></i>
-                                    {{ $payment->is_receipt_image ? 'فتح الإيصال بحجم كامل' : 'عرض / تحميل الإيصال' }}
+                                    {{ $payment->is_receipt_image ? 'فتح الإيصال بحجم كامل' : 'فتح الإيصال في نافذة جديدة' }}
                                 </a>
                             </div>
                         </div>

@@ -10,6 +10,7 @@
                     <span><i class="fe fe-calendar me-1"></i>الإصدار: {{ $invoice->issue_date->format('Y-m-d') }}</span>
                     <span><i class="fe fe-clock me-1"></i>الاستحقاق: {{ $invoice->due_date ? $invoice->due_date->format('Y-m-d') : '—' }}</span>
                 </div>
+                @include('student.pages.invoices.partials.invoice-programs', ['invoice' => $invoice, 'class' => 'mt-2'])
             </div>
         </div>
 
@@ -29,9 +30,9 @@
                         <tr>
                             <td class="ps-3">
                                 <strong class="d-block fs-13">{{ $item->description }}</strong>
-                                @if($item->campEnrollment && $item->campEnrollment->camp)
+                                @if($program = $item->relatedProgram())
                                     <small class="text-muted">
-                                        <i class="fe fe-flag me-1"></i>{{ $item->campEnrollment->camp->name }}
+                                        <i class="fe {{ $program['icon'] }} me-1"></i>{{ $program['type'] }}: {{ $program['name'] }}
                                     </small>
                                 @endif
                             </td>
@@ -54,6 +55,15 @@
                         <td colspan="3" class="text-end ps-3"><strong>المبلغ المتبقي</strong></td>
                         <td class="pe-3 fw-bold text-danger">${{ number_format($invoice->remaining_amount, 2) }}</td>
                     </tr>
+                    @if(($pendingAmount = $invoice->pendingPaymentsAmount()) > 0)
+                        <tr>
+                            <td colspan="3" class="text-end ps-3">
+                                <strong>قيد المراجعة</strong>
+                                <small class="text-muted d-block">المبلغ الذي أدخلته — لا يُحتسب حتى تقبله الإدارة</small>
+                            </td>
+                            <td class="pe-3 fw-bold text-warning">${{ number_format($pendingAmount, 2) }}</td>
+                        </tr>
+                    @endif
                 </tfoot>
             </table>
         </div>

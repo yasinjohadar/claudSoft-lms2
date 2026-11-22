@@ -12,28 +12,13 @@
                 <div class="modal-body">
                     <div class="alert alert-info small mb-4">
                         <i class="fe fe-info me-1"></i>
-                        سيتم مراجعة طلبك من قبل الإدارة بعد رفع الإيصال. لن يُخصم المبلغ من حسابك حتى تتم الموافقة.
+                        سيتم مراجعة طلبك من قبل الإدارة بعد رفع الإيصال. لن يُحتسب المبلغ ضمن المدفوع حتى تتم الموافقة.
                     </div>
 
-                    <div class="mb-3">
-                        <label for="payment_amount" class="form-label">المبلغ <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number"
-                                   class="form-control @error('amount') is-invalid @enderror"
-                                   id="payment_amount"
-                                   name="amount"
-                                   step="0.01"
-                                   min="0.01"
-                                   max="{{ number_format($invoice->remaining_amount, 2, '.', '') }}"
-                                   value="{{ old('amount', number_format($invoice->remaining_amount, 2, '.', '')) }}"
-                                   required>
-                        </div>
-                        <small class="text-muted">المبلغ المتبقي: ${{ number_format($invoice->remaining_amount, 2) }}</small>
-                        @error('amount')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
-                    </div>
+                    @include('student.pages.invoices.partials.payment-amount-field', [
+                        'inputId' => 'payment_amount',
+                        'remaining' => $invoice->remaining_amount,
+                    ])
 
                     <div class="mb-3">
                         <label for="payment_date" class="form-label">تاريخ الدفع <span class="text-danger">*</span></label>

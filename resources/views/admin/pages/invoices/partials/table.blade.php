@@ -35,18 +35,14 @@
         </td>
 
         <td>
-            @php
-                $campNames = $invoice->items
-                    ->map(fn ($item) => optional(optional($item->campEnrollment)->camp)->name)
-                    ->filter()
-                    ->unique()
-                    ->values();
-            @endphp
+            @php $programs = $invoice->relatedPrograms(); @endphp
 
-            @if($campNames->isNotEmpty())
+            @if($programs->isNotEmpty())
                 <div class="d-flex flex-wrap gap-1">
-                    @foreach($campNames as $campName)
-                        <span class="group-show-chip group-show-chip--sm">{{ $campName }}</span>
+                    @foreach($programs as $program)
+                        <span class="group-show-chip group-show-chip--sm" title="{{ $program['type'] }}">
+                            <i class="fe {{ $program['icon'] }} me-1"></i>{{ $program['name'] }}
+                        </span>
                     @endforeach
                 </div>
             @else
@@ -66,6 +62,35 @@
         <td><strong>${{ number_format($invoice->total_amount, 2) }}</strong></td>
         <td class="text-success fw-semibold">${{ number_format($invoice->paid_amount, 2) }}</td>
         <td class="text-danger fw-semibold">${{ number_format($invoice->remaining_amount, 2) }}</td>
+
+        <td>
+            {{-- المبلغ الذي أدخله الطالب في طلب الدفع (غير محتسب حتى القبول) — للمطابقة مع الفاتورة --}}
+            @php
+                $pendingPayments = $invoice->payments->where('status', 'pending')->sortBy('created_at');
+                $pendingTotal = round((float) $pendingPayments->sum('amount'), 2);
+                $remaining = round((float) $invoice->remaining_amount, 2);
+                $diff = round($remaining - $pendingTotal, 2);
+            @endphp
+
+            @if($pendingPayments->isNotEmpty())
+                <div class="d-flex flex-column gap-1">
+                    @foreach($pendingPayments as $pp)
+                        <a href="{{ route('payments.show', $pp->id) }}" class="fw-bold text-warning text-decoration-none" title="مراجعة طلب الدفع {{ $pp->payment_number }}">
+                            <i class="fe fe-clock me-1"></i>${{ number_format($pp->amount, 2) }}
+                        </a>
+                    @endforeach
+                    @if(abs($diff) < 0.01)
+                        <span class="badge bg-success-transparent text-success"><i class="fe fe-check me-1"></i>مطابق للمتبقي</span>
+                    @elseif($diff > 0)
+                        <span class="badge bg-warning-transparent text-warning" title="المتبقي بعد القبول">أقل بـ ${{ number_format($diff, 2) }}</span>
+                    @else
+                        <span class="badge bg-danger-transparent text-danger">أكبر بـ ${{ number_format(abs($diff), 2) }}</span>
+                    @endif
+                </div>
+            @else
+                <span class="text-muted">—</span>
+            @endif
+        </td>
 
         <td>
             <span class="badge {{ $statusColors[$invoice->status] ?? 'bg-secondary-transparent text-secondary' }}">
@@ -107,7 +132,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="11">
+        <td colspan="12">
             <div class="group-show-empty py-5">
                 <i class="fe fe-inbox group-show-empty__icon"></i>
                 <h5 class="group-show-empty__title">لا توجد فواتير</h5>

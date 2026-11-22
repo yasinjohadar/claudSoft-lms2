@@ -202,7 +202,7 @@
     @else
         <div class="table-responsive mb-4" id="profile-invoices-table-wrap">
             <table class="table table-sm table-hover align-middle admin-users-table">
-                <thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+                <thead><tr><th>رقم الفاتورة</th><th>المعسكر / الدبلوم</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th>إجراءات</th></tr></thead>
                 <tbody id="profile-invoices-tbody">
                     @foreach($invoices as $invoice)
                         @include('admin.pages.users.partials.profile-invoice-row', [
@@ -220,7 +220,7 @@
     @if(!$payments->isEmpty())
         <div class="table-responsive" id="profile-payments-table-wrap">
             <table class="table table-sm table-hover align-middle admin-users-table">
-                <thead><tr><th>رقم الدفعة</th><th>التاريخ</th><th>المبلغ</th><th>طريقة الدفع</th><th>الحالة</th></tr></thead>
+                <thead><tr><th>رقم الدفعة</th><th>الفاتورة / المعسكر</th><th>التاريخ</th><th>المبلغ</th><th>طريقة الدفع</th><th>الحالة</th></tr></thead>
                 <tbody id="profile-payments-tbody">
                     @foreach($payments as $payment)
                         @include('admin.pages.users.partials.profile-payment-row', [
@@ -234,7 +234,7 @@
     @else
         <div class="table-responsive d-none" id="profile-payments-table-wrap">
             <table class="table table-sm table-hover align-middle admin-users-table">
-                <thead><tr><th>رقم الدفعة</th><th>التاريخ</th><th>المبلغ</th><th>طريقة الدفع</th><th>الحالة</th></tr></thead>
+                <thead><tr><th>رقم الدفعة</th><th>الفاتورة / المعسكر</th><th>التاريخ</th><th>المبلغ</th><th>طريقة الدفع</th><th>الحالة</th></tr></thead>
                 <tbody id="profile-payments-tbody"></tbody>
             </table>
         </div>

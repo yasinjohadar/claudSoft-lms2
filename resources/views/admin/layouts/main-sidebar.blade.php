@@ -371,9 +371,15 @@
                                 <li class="slide side-menu__label1">
                                     <a href="javascript:void(0);">المالية</a>
                                 </li>
-                                <li class="slide {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
-                                    <a href="{{ route('invoices.index') }}" class="side-menu__item {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
+                                @php $invoicesMenuActive = request()->routeIs('invoices.*') && ! request()->routeIs('invoices.fully-paid'); @endphp
+                                <li class="slide {{ $invoicesMenuActive ? 'active' : '' }}">
+                                    <a href="{{ route('invoices.index') }}" class="side-menu__item {{ $invoicesMenuActive ? 'active' : '' }}">
                                         <i class="fas fa-file-invoice-dollar me-2"></i>الفواتير
+                                    </a>
+                                </li>
+                                <li class="slide {{ request()->routeIs('invoices.fully-paid') ? 'active' : '' }}">
+                                    <a href="{{ route('invoices.fully-paid') }}" class="side-menu__item {{ request()->routeIs('invoices.fully-paid') ? 'active' : '' }}">
+                                        <i class="fas fa-check-double me-2"></i>الفواتير المسددة بالكامل
                                     </a>
                                 </li>
                                 <li class="slide {{ request()->routeIs('payments.index') ? 'active' : '' }}">

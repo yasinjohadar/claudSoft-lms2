@@ -2,6 +2,7 @@
     $paidPct = $invoice->total_amount > 0
         ? min(100, ($invoice->paid_amount / $invoice->total_amount) * 100)
         : 0;
+    $pendingAmount = $invoice->pendingPaymentsAmount();
 @endphp
 
 <div class="col-lg-6 col-12 student-my-courses-stagger" style="--stagger-delay: {{ ($index ?? 0) * 50 }}ms">
@@ -12,6 +13,7 @@
                 <span class="student-invoice-card__date">
                     <i class="fe fe-calendar me-1"></i>{{ $invoice->issue_date->format('Y-m-d') }}
                 </span>
+                @include('student.pages.invoices.partials.invoice-programs', ['invoice' => $invoice, 'class' => 'mt-2'])
             </div>
             <div class="d-flex flex-wrap gap-1 justify-content-end">
                 @include('student.pages.invoices.partials.invoices-status-badge', ['invoice' => $invoice])
@@ -37,6 +39,13 @@
             </div>
         </div>
 
+        @if($pendingAmount > 0)
+            <div class="student-invoice-pending-note student-invoice-pending-note--block mb-3">
+                <i class="fe fe-clock"></i>
+                <span>دفعة بقيمة <strong>${{ number_format($pendingAmount, 2) }}</strong> قيد المراجعة — لا تُحتسب ضمن المدفوع حتى تقبلها الإدارة.</span>
+            </div>
+        @endif
+
         <div class="student-invoice-card__progress">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <small class="text-muted">نسبة السداد</small>
@@ -51,6 +60,15 @@
                      aria-valuemax="100"></div>
             </div>
         </div>
+
+        @if($invoice->payments->count() > 0)
+            <details class="student-invoice-card__payments">
+                <summary><i class="fe fe-list me-1"></i>تسلسل الدفعات ({{ $invoice->payments->count() }})</summary>
+                <div class="pt-3">
+                    @include('student.pages.invoices.partials.payments-timeline', ['invoice' => $invoice])
+                </div>
+            </details>
+        @endif
 
         @if($invoice->items->count() > 0)
             <div class="student-invoice-card__items">

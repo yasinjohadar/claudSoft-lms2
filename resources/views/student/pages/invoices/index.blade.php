@@ -82,12 +82,11 @@
 
                 form.action = @json(route('student.invoices.pay', ['id' => '__INVOICE_ID__'])).replace('__INVOICE_ID__', invoiceId);
                 document.getElementById('indexPayInvoiceNumber').textContent = invoiceNumber || '';
-                document.getElementById('indexPayRemaining').textContent = remaining || '0.00';
 
-                var amountInput = document.getElementById('index_payment_amount');
-                if (amountInput) {
-                    amountInput.value = remaining || '';
-                    amountInput.max = remaining || '';
+                // لا نعبّئ المبلغ تلقائياً: يجب أن يكتب الطالب المبلغ الذي دفعه فعلياً
+                var amountField = form.querySelector('.js-pay-amount-field');
+                if (amountField && window.studentPayAmountReset) {
+                    window.studentPayAmountReset(amountField, remaining);
                 }
 
                 var modal = bootstrap.Modal.getOrCreateInstance(modalEl);

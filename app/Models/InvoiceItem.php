@@ -61,6 +61,34 @@ class InvoiceItem extends Model
         return null;
     }
 
+    /**
+     * The program (training camp / camp group / diploma) this item is billed for.
+     *
+     * @return array{type: string, name: string, icon: string}|null
+     */
+    public function relatedProgram(): ?array
+    {
+        $camp = $this->campEnrollment?->camp;
+        if ($camp) {
+            return ['type' => 'معسكر', 'name' => $camp->name, 'icon' => 'fe-flag'];
+        }
+
+        if ($this->itemable_type === CourseGroupMember::class) {
+            $member = $this->relationLoaded('itemable')
+                ? $this->itemable
+                : $this->itemable()->with('group')->first();
+            $group = $member?->group;
+
+            if ($group) {
+                return $group->isCamp()
+                    ? ['type' => 'معسكر', 'name' => $group->name, 'icon' => 'fe-flag']
+                    : ['type' => 'دبلوم', 'name' => $group->name, 'icon' => 'fe-award'];
+            }
+        }
+
+        return null;
+    }
+
     // Methods
     public function calculateTotal()
     {

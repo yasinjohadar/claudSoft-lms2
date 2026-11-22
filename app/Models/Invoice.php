@@ -71,6 +71,61 @@ class Invoice extends Model
             && ! $this->hasPendingPayment();
     }
 
+    /**
+     * Distinct programs (camps / diplomas) this invoice is billed for.
+     *
+     * @return \Illuminate\Support\Collection<int, array{type: string, name: string, icon: string}>
+     */
+    public function relatedPrograms()
+    {
+        return $this->items
+            ->map(fn (InvoiceItem $item) => $item->relatedProgram())
+            ->filter()
+            ->unique(fn ($p) => $p['type'].'|'.$p['name'])
+            ->values();
+    }
+
+    /**
+     * Sum of student-submitted payments still awaiting admin review (not counted in paid_amount).
+     */
+    public function pendingPaymentsAmount(): float
+    {
+        $payments = $this->relationLoaded('payments')
+            ? $this->payments->where('status', 'pending')
+            : $this->payments()->where('status', 'pending')->get();
+
+        return round((float) $payments->sum('amount'), 2);
+    }
+
+    /**
+     * Payments in chronological order, each annotated with its sequence number and the
+     * running approved total / remaining balance after it (only completed payments count).
+     *
+     * @return \Illuminate\Support\Collection<int, array{payment: Payment, seq: int, paid_after: float|null, remaining_after: float|null}>
+     */
+    public function paymentTimeline()
+    {
+        $running = 0.0;
+        $total = (float) $this->total_amount;
+
+        return $this->payments
+            ->sortBy(fn (Payment $p) => [$p->created_at?->timestamp ?? 0, $p->id])
+            ->values()
+            ->map(function (Payment $payment, int $index) use (&$running, $total) {
+                $counted = $payment->status === 'completed';
+                if ($counted) {
+                    $running = round($running + (float) $payment->amount, 2);
+                }
+
+                return [
+                    'payment' => $payment,
+                    'seq' => $index + 1,
+                    'paid_after' => $counted ? $running : null,
+                    'remaining_after' => $counted ? max(0, round($total - $running, 2)) : null,
+                ];
+            });
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
