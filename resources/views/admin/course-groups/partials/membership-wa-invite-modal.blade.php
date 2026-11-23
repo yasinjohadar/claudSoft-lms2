@@ -75,4 +75,8 @@
         line-height: 1.6;
         min-height: 4rem;
     }
+    tr.membership-invite-flash > td {
+        background-color: rgba(25, 135, 84, 0.15) !important;
+        transition: background-color 0.6s ease;
+    }
 </style>

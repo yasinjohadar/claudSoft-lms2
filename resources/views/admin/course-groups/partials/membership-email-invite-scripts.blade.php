@@ -131,6 +131,45 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    // تحديث خلية البريد للطالب في مكانها بدل إعادة تحميل الجدول (للحفاظ على الصفحة والتمرير)
+    function markMembershipEmailRowInvited(studentId, sentAt) {
+        if (!studentId) return;
+        if (!sentAt) {
+            var d = new Date();
+            var p = function(n) { return String(n).padStart(2, '0'); };
+            sentAt = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+        }
+        document.querySelectorAll('.js-membership-email-invite[data-student-id="' + studentId + '"]').forEach(function(btn) {
+            var cell = btn.closest('td');
+            if (!cell) return;
+
+            Array.from(cell.children).forEach(function(child) {
+                if (child !== btn) child.remove();
+            });
+
+            var badge = document.createElement('span');
+            badge.className = 'badge bg-warning-transparent text-warning d-block mb-1';
+            badge.innerHTML = '<i class="fe fe-mail me-1"></i>دُعي بالبريد';
+
+            var sentEl = document.createElement('small');
+            sentEl.className = 'text-muted d-block mb-1';
+            sentEl.textContent = 'آخر دعوة: ' + sentAt;
+
+            cell.insertBefore(badge, btn);
+            cell.insertBefore(sentEl, btn);
+
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline-primary');
+            btn.innerHTML = '<i class="fe fe-send me-1"></i>إعادة الدعوة';
+
+            var row = btn.closest('tr');
+            if (row) {
+                row.classList.add('membership-invite-flash');
+                setTimeout(function() { row.classList.remove('membership-invite-flash'); }, 2000);
+            }
+        });
+    }
+
     function submitMembershipEmailInvite() {
         var modalEl = document.getElementById('membershipEmailInviteModal');
         var submitBtn = document.getElementById('membershipEmailInviteSubmitBtn');
@@ -168,10 +207,11 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(result) {
                 if (result.ok && result.data.success) {
                     showMembershipEmailAlert(result.data.message || 'تم الإرسال', 'success');
+                    markMembershipEmailRowInvited(
+                        result.data.student_id || document.getElementById('membershipEmailInviteStudentId').value,
+                        result.data.invite_sent_at
+                    );
                     setTimeout(function() {
-                        if (typeof window.reloadMembershipRequestsTable === 'function') {
-                            window.reloadMembershipRequestsTable();
-                        }
                         if (modalEl && window.bootstrap) {
                             var instance = window.bootstrap.Modal.getInstance(modalEl);
                             if (instance) instance.hide();

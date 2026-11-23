@@ -54,7 +54,11 @@
         const j = await r.json();
         if (j.success) {
             showAlert(j.message, 'success');
-            setTimeout(() => location.reload(), 1200);
+            document.querySelectorAll('.js-membership-tg-invite[data-student-id="' + (j.student_id || studentId) + '"]').forEach(function (b) {
+                b.classList.remove('btn-info');
+                b.classList.add('btn-outline-info');
+            });
+            setTimeout(() => bsModal.hide(), 900);
         } else {
             showAlert(j.message || 'فشل الإرسال', 'danger');
         }

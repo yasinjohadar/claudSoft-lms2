@@ -125,6 +125,54 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    function membershipInviteNow() {
+        var d = new Date();
+        var p = function(n) { return String(n).padStart(2, '0'); };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+
+    // تحديث خلية الواتساب للطالب في مكانها بدل إعادة تحميل الجدول (للحفاظ على الصفحة والتمرير)
+    function markMembershipWaRowInvited(studentId, sentAt, instanceName) {
+        if (!studentId) return;
+        document.querySelectorAll('.js-membership-wa-invite[data-student-id="' + studentId + '"]').forEach(function(btn) {
+            var cell = btn.closest('td');
+            if (!cell) return;
+
+            Array.from(cell.children).forEach(function(child) {
+                if (child === btn || child.classList.contains('js-membership-tg-invite')) return;
+                child.remove();
+            });
+
+            var badge = document.createElement('span');
+            badge.className = 'badge bg-warning-transparent text-warning d-block mb-1';
+            badge.innerHTML = '<i class="ri-mail-send-line me-1"></i>دُعي — لم ينضم بعد';
+
+            var sentEl = document.createElement('small');
+            sentEl.className = 'text-muted d-block mb-1';
+            sentEl.textContent = 'آخر دعوة: ' + (sentAt || membershipInviteNow());
+
+            cell.insertBefore(badge, btn);
+            cell.insertBefore(sentEl, btn);
+
+            if (instanceName) {
+                var instEl = document.createElement('small');
+                instEl.className = 'text-muted d-block mb-1';
+                instEl.textContent = 'أُرسلت من: ' + instanceName;
+                cell.insertBefore(instEl, btn);
+            }
+
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-success');
+            btn.innerHTML = '<i class="ri-send-plane-line me-1"></i>إعادة الدعوة';
+
+            var row = btn.closest('tr');
+            if (row) {
+                row.classList.add('membership-invite-flash');
+                setTimeout(function() { row.classList.remove('membership-invite-flash'); }, 2000);
+            }
+        });
+    }
+
     function submitMembershipWaInvite() {
         var modalEl = document.getElementById('membershipWaInviteModal');
         var submitBtn = document.getElementById('membershipWaInviteSubmitBtn');
@@ -162,10 +210,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(result) {
                 if (result.ok && result.data.success) {
                     showMembershipWaAlert(result.data.message || 'تم الإرسال', 'success');
+                    markMembershipWaRowInvited(
+                        result.data.student_id || document.getElementById('membershipWaInviteStudentId').value,
+                        result.data.invite_sent_at,
+                        result.data.instance_name
+                    );
                     setTimeout(function() {
-                        if (typeof window.reloadMembershipRequestsTable === 'function') {
-                            window.reloadMembershipRequestsTable();
-                        }
                         if (modalEl && window.bootstrap) {
                             var instance = window.bootstrap.Modal.getInstance(modalEl);
                             if (instance) instance.hide();
