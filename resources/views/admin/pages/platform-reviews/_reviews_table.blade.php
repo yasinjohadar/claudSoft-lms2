@@ -76,9 +76,27 @@
                     </td>
                     <td>
                         <div class="d-flex flex-wrap gap-1 platform-reviews-actions">
-                            <a href="{{ route('admin.platform-reviews.show', $review->id) }}" class="btn btn-primary-light btn-sm" title="عرض">
+                            <button type="button" class="btn btn-primary-light btn-sm js-review-modal-open" title="عرض"
+                                data-review="{{ json_encode([
+                                    'id' => $review->id,
+                                    'name' => $review->student_name,
+                                    'email' => $review->user?->email ?: $review->student_email,
+                                    'position' => $review->student_position,
+                                    'image' => $review->student_image ? asset('storage/' . $review->student_image) : null,
+                                    'rating' => (int) $review->rating,
+                                    'text' => $review->review_text,
+                                    'suggestion' => $review->suggestion,
+                                    'is_active' => (bool) $review->is_active,
+                                    'is_featured' => (bool) $review->is_featured,
+                                    'created_at' => $review->created_at?->format('Y-m-d H:i'),
+                                    'show_url' => route('admin.platform-reviews.show', $review->id),
+                                    'approve_url' => route('admin.platform-reviews.approve', $review->id),
+                                    'reject_url' => route('admin.platform-reviews.reject', $review->id),
+                                    'featured_url' => route('admin.platform-reviews.toggle-featured', $review->id),
+                                    'delete_url' => route('admin.platform-reviews.destroy', $review->id),
+                                ], JSON_UNESCAPED_UNICODE) }}">
                                 <i class="fe fe-eye"></i>
-                            </a>
+                            </button>
                             @if(!$review->is_active)
                                 <form action="{{ route('admin.platform-reviews.approve', $review->id) }}" method="POST" class="d-inline">
                                     @csrf

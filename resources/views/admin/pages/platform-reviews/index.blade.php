@@ -110,10 +110,110 @@
 
         </div>
     </div>
+
+    @include('admin.pages.platform-reviews.partials.review-modal')
 @stop
 
 @section('script')
 <script>
+(function () {
+    var modalEl = document.getElementById('platformReviewModal');
+    if (!modalEl) return;
+    var buttons = [];
+    var currentIndex = -1;
+
+    function $(id) { return document.getElementById(id); }
+
+    function chip(text, cls, icon) {
+        var s = document.createElement('span');
+        s.className = 'assignments-status-chip ' + cls;
+        if (icon) { var i = document.createElement('i'); i.className = icon + ' me-1'; s.appendChild(i); }
+        s.appendChild(document.createTextNode(text));
+        return s;
+    }
+
+    function render(index) {
+        buttons = Array.from(document.querySelectorAll('.js-review-modal-open'));
+        if (index < 0 || index >= buttons.length) return;
+        currentIndex = index;
+        var r;
+        try { r = JSON.parse(buttons[index].getAttribute('data-review')); } catch (e) { return; }
+
+        $('platformReviewModalTitle').textContent = r.name || '—';
+        var meta = [r.position, r.email].filter(Boolean).join(' · ');
+        $('prmMeta').textContent = meta;
+
+        var avatar = $('prmAvatar');
+        avatar.innerHTML = '';
+        if (r.image) {
+            var img = document.createElement('img');
+            img.src = r.image; img.alt = r.name || '';
+            avatar.appendChild(img);
+        } else {
+            var span = document.createElement('span');
+            span.className = 'fw-bold fs-18';
+            span.textContent = (r.name || '?').charAt(0);
+            avatar.appendChild(span);
+        }
+
+        var stars = $('prmStars');
+        stars.innerHTML = '';
+        for (var i = 1; i <= 5; i++) {
+            var s = document.createElement('i');
+            s.className = 'fe fe-star';
+            s.style.opacity = i <= r.rating ? '1' : '0.25';
+            stars.appendChild(s);
+        }
+        $('prmRatingNum').textContent = '(' + r.rating + '/5)';
+
+        var status = $('prmStatus');
+        status.innerHTML = '';
+        status.appendChild(r.is_active
+            ? chip('مقبول', 'assignments-status-chip--published')
+            : chip('في الانتظار', 'assignments-status-chip--pending'));
+
+        var featured = $('prmFeatured');
+        featured.innerHTML = '';
+        if (r.is_featured) featured.appendChild(chip('مميز', 'assignments-status-chip--graded', 'fe fe-heart'));
+
+        $('prmDate').textContent = r.created_at || '';
+        $('prmText').textContent = r.text || '';
+        $('prmSuggestion').textContent = r.suggestion || '';
+        $('prmSuggestionWrap').classList.toggle('d-none', !r.suggestion);
+
+        $('prmShowLink').href = r.show_url;
+        $('prmApproveForm').action = r.approve_url;
+        $('prmRejectForm').action = r.reject_url;
+        $('prmFeaturedForm').action = r.featured_url;
+        $('prmDeleteForm').action = r.delete_url;
+        $('prmApproveForm').classList.toggle('d-none', r.is_active);
+        $('prmRejectForm').classList.toggle('d-none', !r.is_active);
+        $('prmFeaturedBtn').querySelector('span').textContent = r.is_featured ? 'إلغاء التميز' : 'تمييز';
+
+        $('prmPrev').disabled = index === 0;
+        $('prmNext').disabled = index === buttons.length - 1;
+        modalEl.querySelector('.modal-body').scrollTop = 0;
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.js-review-modal-open');
+        if (!btn) return;
+        buttons = Array.from(document.querySelectorAll('.js-review-modal-open'));
+        render(buttons.indexOf(btn));
+        if (window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    });
+
+    $('prmPrev').addEventListener('click', function () { render(currentIndex - 1); });
+    $('prmNext').addEventListener('click', function () { render(currentIndex + 1); });
+
+    // التنقل بالأسهم (RTL: السهم الأيمن = السابق)
+    modalEl.addEventListener('keydown', function (e) {
+        if (e.target.closest('input, textarea, select')) return;
+        if (e.key === 'ArrowRight') render(currentIndex - 1);
+        if (e.key === 'ArrowLeft') render(currentIndex + 1);
+    });
+})();
+
 (function () {
     ['reviewStatus', 'reviewRating', 'reviewFeatured'].forEach(function (id) {
         const el = document.getElementById(id);
