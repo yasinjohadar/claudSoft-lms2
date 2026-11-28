@@ -2157,6 +2157,66 @@ class CourseGroupController extends Controller
         }
     }
 
+    /**
+     * معاينة رسالة واتساب مستقلة (ليست دعوة) لطالب ضمن طلبات الانضمام.
+     */
+    public function previewMembershipWhatsAppMessage(
+        Request $request,
+        $courseId,
+        $groupId,
+        MembershipWhatsAppInviteService $inviteService
+    ): JsonResponse {
+        return $this->previewMembershipWhatsAppInvite($request, $courseId, $groupId, $inviteService);
+    }
+
+    /**
+     * إرسال رسالة واتساب مستقلة لطالب — لا تُسجَّل كدعوة انضمام.
+     */
+    public function sendMembershipWhatsAppMessage(
+        Request $request,
+        $courseId,
+        $groupId,
+        MembershipWhatsAppInviteService $inviteService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'student_id' => 'required|integer|exists:users,id',
+            'whatsapp_template_id' => 'required|exists:whatsapp_message_templates,id',
+        ]);
+
+        try {
+            [$course, $group, $student] = $this->resolveMembershipInviteContext(
+                $courseId,
+                $groupId,
+                (int) $validated['student_id']
+            );
+
+            $template = WhatsAppMessageTemplate::active()
+                ->byType(WhatsAppMessageTemplate::TYPE_TEXT)
+                ->where('id', $validated['whatsapp_template_id'])
+                ->firstOrFail();
+
+            $sendResult = $inviteService->sendTemplateInvite($student, $course, $group, $template);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال رسالة الواتساب إلى '.$sendResult['phone']
+                    .(! empty($sendResult['instance_name']) ? ' (من: '.$sendResult['instance_name'].')' : ''),
+                'student_id' => $student->id,
+                'instance_name' => $sendResult['instance_name'] ?? null,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر إرسال الرسالة: '.WhatsAppSendErrorMessage::fromThrowable($e),
+            ], 500);
+        }
+    }
+
     public function previewMembershipTelegramInvite(
         Request $request,
         $courseId,

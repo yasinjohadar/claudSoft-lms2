@@ -249,6 +249,20 @@
                                class="btn btn-sm btn-info-light" title="مراجعة بيانات الفورم (صفحة كاملة)">
                                 <i class="fe fe-file-text"></i>
                             </a>
+                            @php
+                                $msgPhone = trim((string) ($request->student->full_phone ?? ''))
+                                    ?: trim(($request->student->country_code ?? '').($request->student->phone ?? ''));
+                            @endphp
+                            @if($msgPhone !== '')
+                                <button type="button"
+                                    class="btn btn-sm btn-success-light js-membership-wa-message"
+                                    title="إرسال رسالة واتساب"
+                                    data-student-id="{{ $request->student_id }}"
+                                    data-student-name="{{ $request->student->name }}"
+                                    data-student-phone="{{ $msgPhone }}">
+                                    <i class="ri-whatsapp-line"></i>
+                                </button>
+                            @endif
                             @if($request->status === 'pending')
                                 <form action="{{ route('courses.groups.membership-requests.approve', [$course->id, $group->id, $request->id]) }}"
                                     method="POST" class="d-inline"
